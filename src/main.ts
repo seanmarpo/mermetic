@@ -222,6 +222,12 @@ async function main(): Promise<void> {
           showToast("Failed to create share link", "error");
         });
     },
+    onLoadExample: (example) => {
+      editor.setCode(example.code);
+      void renderDiagram(example.code);
+      saveDraft(example.code);
+      showToast(`Loaded ${example.label} example`);
+    },
     onToggleTheme: () => {
       currentTheme = toggleTheme(currentTheme);
       toolbar.updateThemeIcon(currentTheme);

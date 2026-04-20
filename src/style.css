@@ -279,6 +279,73 @@ body {
     pointer-events: none;
 }
 
+/* ===== Toolbar Dropdown (Examples) ===== */
+
+.toolbar-dropdown-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.toolbar-icon-chevron {
+    width: 12px;
+    height: 12px;
+    margin-left: -2px;
+    opacity: 0.6;
+}
+
+.toolbar-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 180px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 4px;
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.toolbar-dropdown-menu[hidden] {
+    display: none;
+}
+
+.toolbar-dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 7px 12px;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+}
+
+.toolbar-dropdown-item:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-hover);
+}
+
+.toolbar-dropdown-item:active {
+    background-color: var(--color-bg-active);
+}
+
+.toolbar-dropdown-item:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -1px;
+}
+
 /* ===== Toolbar Icons (inline SVG) ===== */
 
 .toolbar-icon {

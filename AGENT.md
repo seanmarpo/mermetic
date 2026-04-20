@@ -104,6 +104,7 @@ mermetic/
     ├── storage.ts        # localStorage helpers (auto-save, preferences)
     ├── export.ts         # SVG and PNG export utilities
     ├── share.ts          # Share link encoding/decoding (compress + base64url in URL fragment)
+    ├── examples.ts       # Curated example diagrams for all major Mermaid diagram types
     └── types.ts          # Shared TypeScript types and interfaces
 ```
 

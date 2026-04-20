@@ -1,4 +1,5 @@
 import type { Theme } from "./types.ts";
+import { DIAGRAM_EXAMPLES, type DiagramExample } from "./examples.ts";
 
 interface ToolbarOptions {
   onNew: () => void;
@@ -8,6 +9,7 @@ interface ToolbarOptions {
   onExportPng: () => void;
   onCopyCode: () => void;
   onShare: () => void;
+  onLoadExample: (example: DiagramExample) => void;
   onToggleTheme: () => void;
 }
 
@@ -72,6 +74,69 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
   fileGroup.appendChild(newBtn);
   fileGroup.appendChild(openBtn);
   fileGroup.appendChild(saveBtn);
+
+  // --- Examples dropdown ---
+  const examplesWrapper = document.createElement("div");
+  examplesWrapper.className = "toolbar-dropdown-wrapper";
+
+  const examplesBtn = document.createElement("button");
+  examplesBtn.className = "toolbar-btn";
+  examplesBtn.title = "Load an example diagram";
+  examplesBtn.setAttribute("aria-label", "Load an example diagram");
+  examplesBtn.setAttribute("aria-haspopup", "true");
+  examplesBtn.setAttribute("aria-expanded", "false");
+  examplesBtn.innerHTML = `${examplesIcon()}<span class="toolbar-btn-label">Examples</span>${chevronDownIcon()}`;
+
+  const examplesMenu = document.createElement("div");
+  examplesMenu.className = "toolbar-dropdown-menu";
+  examplesMenu.setAttribute("role", "menu");
+  examplesMenu.setAttribute("aria-label", "Example diagrams");
+  examplesMenu.hidden = true;
+
+  for (const example of DIAGRAM_EXAMPLES) {
+    const item = document.createElement("button");
+    item.className = "toolbar-dropdown-item";
+    item.setAttribute("role", "menuitem");
+    item.textContent = example.label;
+    item.addEventListener("click", () => {
+      options.onLoadExample(example);
+      closeExamplesMenu();
+    });
+    examplesMenu.appendChild(item);
+  }
+
+  function closeExamplesMenu(): void {
+    examplesMenu.hidden = true;
+    examplesBtn.setAttribute("aria-expanded", "false");
+  }
+
+  examplesBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = !examplesMenu.hidden;
+    if (isOpen) {
+      closeExamplesMenu();
+    } else {
+      examplesMenu.hidden = false;
+      examplesBtn.setAttribute("aria-expanded", "true");
+    }
+  });
+
+  // Close on outside click
+  document.addEventListener("click", () => {
+    closeExamplesMenu();
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeExamplesMenu();
+    }
+  });
+
+  examplesWrapper.appendChild(examplesBtn);
+  examplesWrapper.appendChild(examplesMenu);
+
+  fileGroup.appendChild(examplesWrapper);
 
   const divider = document.createElement("div");
   divider.className = "toolbar-divider";
@@ -220,6 +285,21 @@ function copyIcon(): string {
   return `<svg class="toolbar-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <rect x="7" y="7" width="10" height="10" rx="1.5"/>
     <path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+  </svg>`;
+}
+
+function examplesIcon(): string {
+  return `<svg class="toolbar-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="6" height="6" rx="1"/>
+    <rect x="11" y="3" width="6" height="6" rx="1"/>
+    <rect x="3" y="11" width="6" height="6" rx="1"/>
+    <rect x="11" y="11" width="6" height="6" rx="1"/>
+  </svg>`;
+}
+
+function chevronDownIcon(): string {
+  return `<svg class="toolbar-icon toolbar-icon-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 8 10 12 14 8"/>
   </svg>`;
 }
 
