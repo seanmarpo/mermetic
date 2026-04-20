@@ -293,7 +293,7 @@ async function main(): Promise<void> {
 
   const footerTagline = document.createElement("span");
   footerTagline.className = "app-footer-tagline";
-  footerTagline.textContent = "Hermetically sealed diagramming.";
+  footerTagline.textContent = "Mermetic — Hermetically sealed diagramming.";
 
   const footerLink = document.createElement("a");
   footerLink.className = "app-footer-link";

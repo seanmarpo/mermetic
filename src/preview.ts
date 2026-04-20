@@ -31,7 +31,12 @@ export function createPreview(_container: HTMLElement): {
   const fitBtn = createButton("Fit", "Fit diagram to view");
   const resetBtn = createButton("100%", "Reset zoom to 100%");
 
-  zoomControls.append(zoomInBtn, zoomOutBtn, fitBtn, resetBtn);
+  const zoomLabel = document.createElement("span");
+  zoomLabel.className = "preview-zoom-label";
+  zoomLabel.setAttribute("aria-live", "polite");
+  zoomLabel.textContent = "100%";
+
+  zoomControls.append(zoomInBtn, zoomOutBtn, fitBtn, resetBtn, zoomLabel);
   header.append(headerLabel, zoomControls);
 
   const content = document.createElement("div");
@@ -47,6 +52,7 @@ export function createPreview(_container: HTMLElement): {
 
   function applyTransform(): void {
     transformWrapper.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`;
+    zoomLabel.textContent = `${Math.round(transform.scale * 100)}%`;
   }
 
   function zoomTo(newScale: number, centerX?: number, centerY?: number): void {
@@ -83,7 +89,7 @@ export function createPreview(_container: HTMLElement): {
 
     const scaleX = availWidth / naturalWidth;
     const scaleY = availHeight / naturalHeight;
-    const newScale = Math.min(scaleX, scaleY, 1);
+    const newScale = Math.min(scaleX, scaleY);
 
     transform.scale = newScale;
     transform.x = (contentRect.width - naturalWidth * newScale) / 2;

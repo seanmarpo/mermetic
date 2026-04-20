@@ -583,6 +583,26 @@ body {
     outline-offset: 1px;
 }
 
+.preview-zoom-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 20px;
+    padding: 0 6px;
+    margin-left: 4px;
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--color-text-muted);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-sm);
+    user-select: none;
+    text-align: center;
+    cursor: default;
+    opacity: 0.8;
+}
+
 /* ===== Preview Content & Transform Wrapper ===== */
 
 .preview-content {
