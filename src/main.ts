@@ -12,6 +12,8 @@ import {
 } from "./share.ts";
 import type { Theme } from "./types.ts";
 import mermaid from "mermaid";
+import elkLayouts from "@mermaid-js/layout-elk";
+import tidyTreeLayouts from "@mermaid-js/layout-tidy-tree";
 
 const DEFAULT_DIAGRAM = `graph TD
     A[Start] --> B{Decision}
@@ -149,6 +151,8 @@ async function main(): Promise<void> {
   let currentTheme = initTheme();
 
   // --- Initialize Mermaid ---
+  mermaid.registerLayoutLoaders(elkLayouts);
+  mermaid.registerLayoutLoaders(tidyTreeLayouts);
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: "strict",
