@@ -4,7 +4,7 @@ import { saveDraft, loadDraft } from "./storage.ts";
 import { createEditor } from "./editor.ts";
 import { createPreview } from "./preview.ts";
 import { createToolbar } from "./toolbar.ts";
-import { exportSvg, exportPng } from "./export.ts";
+import { exportSvg, exportPng, downloadBlob } from "./export.ts";
 import {
   buildShareUrl,
   loadFromShareUrl,
@@ -40,21 +40,6 @@ function getMermaidTheme(appTheme: Theme): string {
   return appTheme === "dark" ? "dark" : "default";
 }
 
-function downloadTextFile(content: string, filename: string): void {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.style.display = "none";
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  }, 100);
-}
-
 function showToast(
   message: string,
   type: "success" | "error" = "success",
@@ -77,6 +62,83 @@ function showToast(
   }, 2000);
 }
 
+function showShortcutsHelp(): void {
+  // Remove existing modal if open
+  const existing = document.getElementById("shortcuts-modal");
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.id = "shortcuts-modal";
+  overlay.className = "shortcuts-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-label", "Keyboard shortcuts");
+
+  const dialog = document.createElement("div");
+  dialog.className = "shortcuts-dialog";
+
+  const title = document.createElement("h2");
+  title.className = "shortcuts-title";
+  title.textContent = "Keyboard Shortcuts";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "shortcuts-close-btn";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.textContent = "\u00d7";
+
+  const header = document.createElement("div");
+  header.className = "shortcuts-header";
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const shortcuts: Array<[string, string]> = [
+    ["Ctrl/\u2318 + N", "New diagram"],
+    ["Ctrl/\u2318 + O", "Open file"],
+    ["Ctrl/\u2318 + S", "Save as .mmd"],
+    ["Tab", "Indent line(s)"],
+    ["Shift + Tab", "Outdent line(s)"],
+    ["?", "Show this help"],
+  ];
+
+  const list = document.createElement("dl");
+  list.className = "shortcuts-list";
+  for (const [key, desc] of shortcuts) {
+    const dt = document.createElement("dt");
+    dt.className = "shortcuts-key";
+    const kbd = document.createElement("kbd");
+    kbd.textContent = key;
+    dt.appendChild(kbd);
+    const dd = document.createElement("dd");
+    dd.className = "shortcuts-desc";
+    dd.textContent = desc;
+    list.appendChild(dt);
+    list.appendChild(dd);
+  }
+
+  dialog.appendChild(header);
+  dialog.appendChild(list);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  // Focus the close button for keyboard accessibility
+  closeBtn.focus();
+
+  function close(): void {
+    overlay.remove();
+  }
+
+  closeBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+}
+
 async function main(): Promise<void> {
   const app = document.getElementById("app");
   if (!app) {
@@ -97,24 +159,30 @@ async function main(): Promise<void> {
   const appContent = document.createElement("div");
   appContent.className = "app-content";
 
-  const preview = createPreview(appContent);
-  const editor = createEditor(appContent, () => {
-    debouncedRender(editor.getCode());
-    debouncedSave(editor.getCode());
-  });
+  const preview = createPreview();
+  const editor = createEditor(
+    () => {
+      debouncedRender(editor.getCode());
+      debouncedSave(editor.getCode());
+    },
+    (code: string) => {
+      // Paste detected — render immediately and fit if successful
+      void renderDiagram(code).then(() => {
+        if (!hasError) {
+          preview.fitToView();
+        }
+      });
+      saveDraft(code);
+    },
+  );
 
   // --- Render function ---
   let hasError = false;
 
   async function renderDiagram(code: string): Promise<void> {
-    try {
-      await preview.render(code);
-      hasError = false;
-      toolbar.updateError(false);
-    } catch {
-      hasError = true;
-      toolbar.updateError(true);
-    }
+    const result = await preview.render(code);
+    hasError = result.error;
+    toolbar.updateError(result.error);
   }
 
   const debouncedRender = debounce((code: string) => {
@@ -148,26 +216,34 @@ async function main(): Promise<void> {
     fileInput.click();
   }
 
+  // --- Reusable handler functions ---
+  function handleNew(): void {
+    if (
+      editor.getCode().trim() !== "" &&
+      editor.getCode().trim() !== DEFAULT_DIAGRAM.trim()
+    ) {
+      if (!confirm("Create a new diagram? Unsaved changes will be lost.")) {
+        return;
+      }
+    }
+    editor.setCode(DEFAULT_DIAGRAM);
+    void renderDiagram(DEFAULT_DIAGRAM);
+    saveDraft(DEFAULT_DIAGRAM);
+  }
+
+  function handleSave(): void {
+    const blob = new Blob([editor.getCode()], {
+      type: "text/plain;charset=utf-8",
+    });
+    downloadBlob(blob, "diagram.mmd");
+    showToast("Saved diagram.mmd");
+  }
+
   // --- Create toolbar ---
   const toolbar = createToolbar({
-    onNew: () => {
-      if (
-        editor.getCode().trim() !== "" &&
-        editor.getCode().trim() !== DEFAULT_DIAGRAM.trim()
-      ) {
-        if (!confirm("Create a new diagram? Unsaved changes will be lost.")) {
-          return;
-        }
-      }
-      editor.setCode(DEFAULT_DIAGRAM);
-      void renderDiagram(DEFAULT_DIAGRAM);
-      saveDraft(DEFAULT_DIAGRAM);
-    },
+    onNew: handleNew,
     onOpen: handleFileOpen,
-    onSave: () => {
-      downloadTextFile(editor.getCode(), "diagram.mmd");
-      showToast("Saved diagram.mmd");
-    },
+    onSave: handleSave,
     onExportSvg: () => {
       const svg = preview.getSvgElement();
       if (svg) {
@@ -224,7 +300,9 @@ async function main(): Promise<void> {
     },
     onLoadExample: (example) => {
       editor.setCode(example.code);
-      void renderDiagram(example.code);
+      void renderDiagram(example.code).then(() => {
+        preview.fitToView();
+      });
       saveDraft(example.code);
       showToast(`Loaded ${example.label} example`);
     },
@@ -242,6 +320,7 @@ async function main(): Promise<void> {
       // Re-render the current diagram with the new theme
       void renderDiagram(editor.getCode());
     },
+    onShowShortcuts: showShortcutsHelp,
   });
 
   toolbar.updateThemeIcon(currentTheme);
@@ -253,29 +332,50 @@ async function main(): Promise<void> {
   divider.setAttribute("aria-label", "Resize panels");
 
   let isResizing = false;
+  let isVerticalLayout = false;
   let startX = 0;
   let startWidth = 0;
+  let startY = 0;
+  let startHeight = 0;
 
   divider.addEventListener("mousedown", (e: MouseEvent) => {
     isResizing = true;
-    startX = e.clientX;
-    startWidth = editor.element.getBoundingClientRect().width;
-    document.body.style.cursor = "col-resize";
+    isVerticalLayout = window.innerWidth <= 768;
+    if (isVerticalLayout) {
+      startY = e.clientY;
+      startHeight = editor.element.getBoundingClientRect().height;
+      document.body.style.cursor = "row-resize";
+    } else {
+      startX = e.clientX;
+      startWidth = editor.element.getBoundingClientRect().width;
+      document.body.style.cursor = "col-resize";
+    }
     document.body.style.userSelect = "none";
     e.preventDefault();
   });
 
   window.addEventListener("mousemove", (e: MouseEvent) => {
     if (!isResizing) return;
-    const dx = e.clientX - startX;
-    const newWidth = startWidth + dx;
-    const containerWidth = appContent.getBoundingClientRect().width;
-    const minWidth = 250;
-    const maxWidth = containerWidth - 250 - 6; // 6 = divider width
-
-    const clampedWidth = Math.min(maxWidth, Math.max(minWidth, newWidth));
-    const pct = (clampedWidth / containerWidth) * 100;
-    editor.element.style.width = `${pct}%`;
+    if (isVerticalLayout) {
+      const dy = e.clientY - startY;
+      const newHeight = startHeight + dy;
+      const containerHeight = appContent.getBoundingClientRect().height;
+      const minHeight = 150;
+      const maxHeight = containerHeight - 150 - 6;
+      const clampedHeight = Math.min(maxHeight, Math.max(minHeight, newHeight));
+      const pct = (clampedHeight / containerHeight) * 100;
+      editor.element.style.height = `${pct}%`;
+    } else {
+      const dx = e.clientX - startX;
+      const newWidth = startWidth + dx;
+      const containerWidth = appContent.getBoundingClientRect().width;
+      const minWidth = 250;
+      const maxWidth = containerWidth - 250 - 6; // 6 = divider width
+      const clampedWidth = Math.min(maxWidth, Math.max(minWidth, newWidth));
+      const pct = (clampedWidth / containerWidth) * 100;
+      editor.element.style.width = `${pct}%`;
+    }
+    updateDividerAriaValue();
   });
 
   window.addEventListener("mouseup", () => {
@@ -284,6 +384,59 @@ async function main(): Promise<void> {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     }
+  });
+
+  // Keyboard-based panel resize
+  divider.tabIndex = 0;
+  divider.setAttribute("aria-orientation", "vertical");
+  divider.setAttribute("aria-valuemin", "0");
+  divider.setAttribute("aria-valuemax", "100");
+
+  function updateDividerAriaValue(): void {
+    const vertical = window.innerWidth <= 768;
+    let pct: number;
+    if (vertical) {
+      const containerHeight = appContent.getBoundingClientRect().height;
+      const editorHeight = editor.element.getBoundingClientRect().height;
+      pct = Math.round((editorHeight / containerHeight) * 100);
+    } else {
+      const containerWidth = appContent.getBoundingClientRect().width;
+      const editorWidth = editor.element.getBoundingClientRect().width;
+      pct = Math.round((editorWidth / containerWidth) * 100);
+    }
+    divider.setAttribute("aria-valuenow", String(pct));
+  }
+
+  divider.addEventListener("keydown", (e: KeyboardEvent) => {
+    const vertical = window.innerWidth <= 768;
+    if (vertical) {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const containerHeight = appContent.getBoundingClientRect().height;
+      const currentHeight = editor.element.getBoundingClientRect().height;
+      const step = containerHeight * 0.02;
+      const delta = e.key === "ArrowDown" ? step : -step;
+      const newHeight = currentHeight + delta;
+      const minHeight = 150;
+      const maxHeight = containerHeight - 150 - 6;
+      const clampedHeight = Math.min(maxHeight, Math.max(minHeight, newHeight));
+      const pct = (clampedHeight / containerHeight) * 100;
+      editor.element.style.height = `${pct}%`;
+    } else {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      const containerWidth = appContent.getBoundingClientRect().width;
+      const currentWidth = editor.element.getBoundingClientRect().width;
+      const step = containerWidth * 0.02;
+      const delta = e.key === "ArrowRight" ? step : -step;
+      const newWidth = currentWidth + delta;
+      const minWidth = 250;
+      const maxWidth = containerWidth - 250 - 6;
+      const clampedWidth = Math.min(maxWidth, Math.max(minWidth, newWidth));
+      const pct = (clampedWidth / containerWidth) * 100;
+      editor.element.style.width = `${pct}%`;
+    }
+    updateDividerAriaValue();
   });
 
   // --- Footer ---
@@ -346,28 +499,27 @@ async function main(): Promise<void> {
 
     if (isMod && e.key === "s") {
       e.preventDefault();
-      downloadTextFile(editor.getCode(), "diagram.mmd");
-      showToast("Saved diagram.mmd");
+      handleSave();
     }
 
     if (isMod && e.key === "n") {
       e.preventDefault();
-      if (
-        editor.getCode().trim() !== "" &&
-        editor.getCode().trim() !== DEFAULT_DIAGRAM.trim()
-      ) {
-        if (!confirm("Create a new diagram? Unsaved changes will be lost.")) {
-          return;
-        }
-      }
-      editor.setCode(DEFAULT_DIAGRAM);
-      void renderDiagram(DEFAULT_DIAGRAM);
-      saveDraft(DEFAULT_DIAGRAM);
+      handleNew();
     }
 
     if (isMod && e.key === "o") {
       e.preventDefault();
       handleFileOpen();
+    }
+
+    // Show keyboard shortcuts help
+    if (
+      e.key === "?" &&
+      !isMod &&
+      document.activeElement?.tagName !== "TEXTAREA"
+    ) {
+      e.preventDefault();
+      showShortcutsHelp();
     }
   });
 

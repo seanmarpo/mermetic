@@ -47,8 +47,9 @@ async function compress(text: string): Promise<Uint8Array> {
   const input = encoder.encode(text);
   const cs = new CompressionStream("deflate-raw");
   const writer = cs.writable.getWriter();
-  void writer.write(input);
-  void writer.close();
+
+  // Write and close in background — errors will surface when reading
+  const writePromise = writer.write(input).then(() => writer.close());
 
   const reader = cs.readable.getReader();
   const chunks: Uint8Array[] = [];
@@ -57,6 +58,9 @@ async function compress(text: string): Promise<Uint8Array> {
     if (done) break;
     chunks.push(value);
   }
+
+  // Ensure any write errors are surfaced
+  await writePromise;
 
   // Concatenate chunks
   const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
@@ -74,8 +78,9 @@ async function decompress(data: Uint8Array): Promise<string> {
   const writer = ds.writable.getWriter();
   const copy = new ArrayBuffer(data.byteLength);
   new Uint8Array(copy).set(data);
-  void writer.write(copy);
-  void writer.close();
+
+  // Write and close in background — errors will surface when reading
+  const writePromise = writer.write(copy).then(() => writer.close());
 
   const reader = ds.readable.getReader();
   const chunks: Uint8Array[] = [];
@@ -84,6 +89,9 @@ async function decompress(data: Uint8Array): Promise<string> {
     if (done) break;
     chunks.push(value);
   }
+
+  // Ensure any write errors are surfaced
+  await writePromise;
 
   const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
   const result = new Uint8Array(totalLength);
@@ -132,9 +140,16 @@ export function isShareFragment(hash: string): boolean {
 /**
  * Builds a full share URL for the current origin/path.
  */
+const MAX_SHARE_URL_LENGTH = 8000;
+
 export async function buildShareUrl(code: string): Promise<string> {
   const fragment = await encodeShareFragment(code);
-  return `${window.location.origin}${window.location.pathname}#${fragment}`;
+  const base = window.location.href.split("#")[0];
+  const url = `${base}#${fragment}`;
+  if (url.length > MAX_SHARE_URL_LENGTH) {
+    throw new Error("Diagram is too large to share via URL");
+  }
+  return url;
 }
 
 /**

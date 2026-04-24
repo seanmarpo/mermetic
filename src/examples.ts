@@ -292,4 +292,70 @@ export const DIAGRAM_EXAMPLES: readonly DiagramExample[] = [
     Orders --> DB
     Notify --> Queue`,
   },
+  {
+    label: "Layout: ELK",
+    code: `---
+config:
+  layout: elk
+---
+flowchart TD
+    Start[Request Received] --> Auth{Authenticated?}
+    Auth -->|Yes| RateLimit{Rate limit OK?}
+    Auth -->|No| Unauth[401 Unauthorized]
+
+    RateLimit -->|Yes| Route[Route Request]
+    RateLimit -->|No| TooMany[429 Too Many Requests]
+
+    Route --> Users[User Service]
+    Route --> Orders[Order Service]
+    Route --> Search[Search Service]
+
+    Users --> Cache[(Redis Cache)]
+    Users --> UserDB[(Users DB)]
+    Orders --> OrderDB[(Orders DB)]
+    Orders --> Queue[Message Queue]
+    Search --> Index[(Search Index)]
+
+    Queue --> Notify[Notification Service]
+    Queue --> Analytics[Analytics Service]
+
+    Notify --> Email[Email Provider]
+    Notify --> Push[Push Notifications]
+
+    Cache -.->|miss| UserDB`,
+  },
+  {
+    label: "Layout: Tidy Tree",
+    code: `---
+config:
+  layout: tidy-tree
+---
+flowchart TD
+    CEO[CEO]
+    CEO --> CTO[CTO]
+    CEO --> CFO[CFO]
+    CEO --> COO[COO]
+
+    CTO --> VP_Eng[VP Engineering]
+    CTO --> VP_Prod[VP Product]
+
+    VP_Eng --> FE[Frontend Team]
+    VP_Eng --> BE[Backend Team]
+    VP_Eng --> Infra[Infrastructure]
+
+    VP_Prod --> Design[Design]
+    VP_Prod --> PM[Product Managers]
+
+    CFO --> Accounting[Accounting]
+    CFO --> FPA[FP&A]
+
+    COO --> HR[Human Resources]
+    COO --> Legal[Legal]
+    COO --> Ops[Operations]
+
+    FE --> FE1[Web App]
+    FE --> FE2[Mobile App]
+    BE --> BE1[API Team]
+    BE --> BE2[Data Team]`,
+  },
 ] as const;

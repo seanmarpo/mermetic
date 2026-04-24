@@ -8,8 +8,9 @@ interface Transform {
   scale: number;
 }
 
-export function createPreview(_container: HTMLElement): {
-  render: (code: string) => Promise<void>;
+export function createPreview(): {
+  render: (code: string) => Promise<{ error: boolean }>;
+  fitToView: () => void;
   getSvgElement: () => SVGElement | null;
   element: HTMLElement;
 } {
@@ -49,6 +50,7 @@ export function createPreview(_container: HTMLElement): {
   element.append(header, content);
 
   const transform: Transform = { x: 0, y: 0, scale: 1 };
+  let renderGeneration = 0;
 
   function applyTransform(): void {
     transformWrapper.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`;
@@ -75,11 +77,44 @@ export function createPreview(_container: HTMLElement): {
     if (!svg) return;
 
     const contentRect = content.getBoundingClientRect();
-    const svgRect = svg.getBoundingClientRect();
 
-    // Get the natural size of the SVG before any transforms
-    const naturalWidth = svgRect.width / transform.scale;
-    const naturalHeight = svgRect.height / transform.scale;
+    // Determine the SVG's actual rendered pixel dimensions at scale=1.
+    // getBoundingClientRect() is the most reliable source because it reflects
+    // how the browser actually rendered the SVG, accounting for width/height
+    // attributes, viewBox scaling, and CSS. We divide by the current transform
+    // scale (applied by the wrapper) to recover the unscaled pixel size.
+    let naturalWidth = 0;
+    let naturalHeight = 0;
+
+    if (transform.scale > 0) {
+      const svgRect = svg.getBoundingClientRect();
+      if (svgRect.width > 0 && svgRect.height > 0) {
+        naturalWidth = svgRect.width / transform.scale;
+        naturalHeight = svgRect.height / transform.scale;
+      }
+    }
+
+    // Fallback to width/height attributes (actual render size)
+    if (naturalWidth === 0 || naturalHeight === 0) {
+      const w = parseFloat(svg.getAttribute("width") || "0");
+      const h = parseFloat(svg.getAttribute("height") || "0");
+      if (w > 0 && h > 0) {
+        naturalWidth = w;
+        naturalHeight = h;
+      }
+    }
+
+    // Last resort: viewBox dimensions (SVG coordinate system, not pixels)
+    if (naturalWidth === 0 || naturalHeight === 0) {
+      const viewBox = svg.getAttribute("viewBox");
+      if (viewBox) {
+        const parts = viewBox.split(/[\s,]+/);
+        if (parts.length === 4) {
+          naturalWidth = parseFloat(parts[2]);
+          naturalHeight = parseFloat(parts[3]);
+        }
+      }
+    }
 
     if (naturalWidth === 0 || naturalHeight === 0) return;
 
@@ -258,26 +293,31 @@ export function createPreview(_container: HTMLElement): {
   // Set default cursor
   content.style.cursor = "grab";
 
-  async function render(code: string): Promise<void> {
+  async function render(code: string): Promise<{ error: boolean }> {
     if (!code.trim()) {
       transformWrapper.innerHTML =
         '<div class="preview-placeholder">Enter a Mermaid diagram in the editor</div>';
-      return;
+      return { error: false };
     }
 
+    const thisGeneration = ++renderGeneration;
     const id = `mermetic-diagram-${renderCounter++}`;
 
     try {
-      // Remove previous temporary render containers
-      const oldContainer = document.getElementById(id);
-      if (oldContainer) oldContainer.remove();
-
       const { svg } = await mermaid.render(id, code);
+
+      // Discard stale result if a newer render has started
+      if (thisGeneration !== renderGeneration) return { error: false };
+
       transformWrapper.innerHTML = svg;
 
       // Remove any error styling
       transformWrapper.classList.remove("preview-error");
+      return { error: false };
     } catch (error) {
+      // Discard stale error if a newer render has started
+      if (thisGeneration !== renderGeneration) return { error: false };
+
       const message = error instanceof Error ? error.message : String(error);
 
       // Clean up any leftover element mermaid may have created
@@ -289,6 +329,7 @@ export function createPreview(_container: HTMLElement): {
         <div class="preview-error-title">Diagram Error</div>
         <pre class="preview-error-detail">${escapeHtml(message)}</pre>
       </div>`;
+      return { error: true };
     }
   }
 
@@ -296,7 +337,7 @@ export function createPreview(_container: HTMLElement): {
     return transformWrapper.querySelector("svg");
   }
 
-  return { render, getSvgElement, element };
+  return { render, fitToView, getSvgElement, element };
 }
 
 function createButton(text: string, title: string): HTMLButtonElement {

@@ -10,8 +10,38 @@
         <meta name="theme-color" content="#1a1a2e" />
         <title>Mermetic — Hermetically sealed diagramming</title>
         <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+        <script>
+            try {
+                const stored = localStorage.getItem("mermetic-theme");
+                if (stored === "light" || stored === "dark") {
+                    document.documentElement.dataset.theme = stored;
+                } else if (
+                    window.matchMedia &&
+                    window.matchMedia("(prefers-color-scheme: light)").matches
+                ) {
+                    document.documentElement.dataset.theme = "light";
+                } else {
+                    document.documentElement.dataset.theme = "dark";
+                }
+            } catch (e) {
+                document.documentElement.dataset.theme = "dark";
+            }
+        </script>
     </head>
     <body>
+        <noscript>
+            <p
+                style="
+                    padding: 2rem;
+                    text-align: center;
+                    font-family: system-ui;
+                    color: #ccc;
+                "
+            >
+                Mermetic requires JavaScript to run. Please enable it in your
+                browser settings.
+            </p>
+        </noscript>
         <div id="app"></div>
         <script type="module" src="./src/main.ts"></script>
     </body>

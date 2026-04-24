@@ -11,6 +11,7 @@ interface ToolbarOptions {
   onShare: () => void;
   onLoadExample: (example: DiagramExample) => void;
   onToggleTheme: () => void;
+  onShowShortcuts: () => void;
 }
 
 interface ToolbarResult {
@@ -80,14 +81,17 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
   examplesWrapper.className = "toolbar-dropdown-wrapper";
 
   const examplesBtn = document.createElement("button");
+  examplesBtn.type = "button";
   examplesBtn.className = "toolbar-btn";
   examplesBtn.title = "Load an example diagram";
   examplesBtn.setAttribute("aria-label", "Load an example diagram");
   examplesBtn.setAttribute("aria-haspopup", "true");
   examplesBtn.setAttribute("aria-expanded", "false");
+  examplesBtn.setAttribute("aria-controls", "examples-menu");
   examplesBtn.innerHTML = `${examplesIcon()}<span class="toolbar-btn-label">Examples</span>${chevronDownIcon()}`;
 
   const examplesMenu = document.createElement("div");
+  examplesMenu.id = "examples-menu";
   examplesMenu.className = "toolbar-dropdown-menu";
   examplesMenu.setAttribute("role", "menu");
   examplesMenu.setAttribute("aria-label", "Example diagrams");
@@ -95,6 +99,7 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
 
   for (const example of DIAGRAM_EXAMPLES) {
     const item = document.createElement("button");
+    item.type = "button";
     item.className = "toolbar-dropdown-item";
     item.setAttribute("role", "menuitem");
     item.textContent = example.label;
@@ -118,6 +123,10 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
     } else {
       examplesMenu.hidden = false;
       examplesBtn.setAttribute("aria-expanded", "true");
+      const firstItem = examplesMenu.querySelector<HTMLButtonElement>(
+        ".toolbar-dropdown-item",
+      );
+      firstItem?.focus();
     }
   });
 
@@ -129,7 +138,52 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
   // Close on Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      if (!examplesMenu.hidden) {
+        examplesBtn.focus();
+      }
       closeExamplesMenu();
+    }
+  });
+
+  // WAI-ARIA keyboard navigation for menu
+  examplesMenu.addEventListener("keydown", (e: KeyboardEvent) => {
+    const items = Array.from(
+      examplesMenu.querySelectorAll<HTMLButtonElement>(
+        ".toolbar-dropdown-item",
+      ),
+    );
+    const currentIndex = items.indexOf(
+      document.activeElement as HTMLButtonElement,
+    );
+
+    switch (e.key) {
+      case "ArrowDown": {
+        e.preventDefault();
+        const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+        items[next].focus();
+        break;
+      }
+      case "ArrowUp": {
+        e.preventDefault();
+        const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+        items[prev].focus();
+        break;
+      }
+      case "Home":
+        e.preventDefault();
+        items[0]?.focus();
+        break;
+      case "End":
+        e.preventDefault();
+        items[items.length - 1]?.focus();
+        break;
+      case "Escape":
+        closeExamplesMenu();
+        examplesBtn.focus();
+        break;
+      case "Tab":
+        closeExamplesMenu();
+        break;
     }
   });
 
@@ -194,12 +248,22 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
   rightSection.className = "toolbar-section toolbar-right";
 
   const themeBtn = document.createElement("button");
+  themeBtn.type = "button";
   themeBtn.className = "toolbar-btn toolbar-btn-icon";
   themeBtn.title = "Toggle theme";
   themeBtn.setAttribute("aria-label", "Toggle theme");
   themeBtn.innerHTML = moonIcon();
   themeBtn.addEventListener("click", options.onToggleTheme);
   rightSection.appendChild(themeBtn);
+
+  const shortcutsBtn = document.createElement("button");
+  shortcutsBtn.type = "button";
+  shortcutsBtn.className = "toolbar-btn toolbar-btn-icon";
+  shortcutsBtn.title = "Keyboard shortcuts (?)";
+  shortcutsBtn.setAttribute("aria-label", "Keyboard shortcuts");
+  shortcutsBtn.innerHTML = keyboardIcon();
+  shortcutsBtn.addEventListener("click", options.onShowShortcuts);
+  rightSection.appendChild(shortcutsBtn);
 
   // --- Hidden file input ---
   const fileInput = document.createElement("input");
@@ -238,10 +302,15 @@ function createButton(
   onClick: () => void,
 ): HTMLButtonElement {
   const btn = document.createElement("button");
+  btn.type = "button";
   btn.className = "toolbar-btn";
   btn.title = title;
   btn.setAttribute("aria-label", title);
-  btn.innerHTML = `${iconHtml}<span class="toolbar-btn-label">${label}</span>`;
+  btn.innerHTML = iconHtml;
+  const labelSpan = document.createElement("span");
+  labelSpan.className = "toolbar-btn-label";
+  labelSpan.textContent = label;
+  btn.appendChild(labelSpan);
   btn.addEventListener("click", onClick);
   return btn;
 }
@@ -324,6 +393,16 @@ function sunIcon(): string {
     <line x1="13.66" y1="13.66" x2="15.07" y2="15.07"/>
     <line x1="4.93" y1="15.07" x2="6.34" y2="13.66"/>
     <line x1="13.66" y1="6.34" x2="15.07" y2="4.93"/>
+  </svg>`;
+}
+
+function keyboardIcon(): string {
+  return `<svg class="toolbar-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="16" height="12" rx="2"/>
+    <line x1="6" y1="8" x2="6" y2="8.01"/>
+    <line x1="10" y1="8" x2="10" y2="8.01"/>
+    <line x1="14" y1="8" x2="14" y2="8.01"/>
+    <line x1="6" y1="12" x2="14" y2="12"/>
   </svg>`;
 }
 

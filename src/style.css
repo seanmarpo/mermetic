@@ -133,6 +133,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
     overflow: hidden;
 }
@@ -763,6 +764,97 @@ body {
     background-color: var(--color-success);
 }
 
+/* ===== Keyboard Shortcuts Dialog ===== */
+
+.shortcuts-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.shortcuts-dialog {
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 20px 24px;
+    min-width: 300px;
+    max-width: 400px;
+}
+
+.shortcuts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.shortcuts-title {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.shortcuts-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 18px;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.shortcuts-close-btn:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-border);
+}
+
+.shortcuts-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    align-items: center;
+    margin: 0;
+}
+
+.shortcuts-key {
+    margin: 0;
+}
+
+.shortcuts-key kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.shortcuts-desc {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
 /* ===== Responsive: Stack Vertically on Small Screens ===== */
 
 @media (max-width: 768px) {
@@ -802,7 +894,10 @@ body {
     }
 
     .toolbar-middle {
-        display: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-shrink: 1;
+        min-width: 0;
     }
 
     .toolbar-btn-label {
@@ -843,13 +938,4 @@ body {
 :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
-}
-
-/* ===== Transitions on theme change ===== */
-
-.theme-transitioning,
-.theme-transitioning *,
-.theme-transitioning *::before,
-.theme-transitioning *::after {
-    transition-duration: 300ms !important;
 }

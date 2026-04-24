@@ -1,7 +1,7 @@
 /**
  * Triggers a download of the given Blob with the specified filename.
  */
-function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -21,7 +21,15 @@ function downloadBlob(blob: Blob, filename: string): void {
  * Exports the given SVG element as an `.svg` file download.
  */
 export function exportSvg(svgElement: SVGElement): void {
-  const svgString = svgElement.outerHTML;
+  const serializer = new XMLSerializer();
+  let svgString = serializer.serializeToString(svgElement);
+  if (!svgString.includes('xmlns="')) {
+    svgString = svgString.replace(
+      "<svg",
+      '<svg xmlns="http://www.w3.org/2000/svg"',
+    );
+  }
+  svgString = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgString;
   const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
   downloadBlob(blob, "diagram.svg");
 }
@@ -41,10 +49,33 @@ export async function exportPng(
   const serializer = new XMLSerializer();
   const svgString = serializer.serializeToString(svgElement);
 
-  // Get the SVG's intrinsic dimensions
-  const svgRect = svgElement.getBoundingClientRect();
-  const width = svgRect.width || 800;
-  const height = svgRect.height || 600;
+  // Get the SVG's intrinsic dimensions from viewBox or width/height attributes,
+  // avoiding getBoundingClientRect() which is affected by CSS transforms (zoom/pan).
+  let width = 0;
+  let height = 0;
+
+  const viewBox = svgElement.getAttribute("viewBox");
+  if (viewBox) {
+    const parts = viewBox.split(/[\s,]+/);
+    if (parts.length === 4) {
+      width = parseFloat(parts[2]);
+      height = parseFloat(parts[3]);
+    }
+  }
+
+  if (width === 0 || height === 0) {
+    const w = parseFloat(svgElement.getAttribute("width") || "0");
+    const h = parseFloat(svgElement.getAttribute("height") || "0");
+    if (w > 0 && h > 0) {
+      width = w;
+      height = h;
+    }
+  }
+
+  if (width === 0 || height === 0) {
+    width = 800;
+    height = 600;
+  }
 
   const scaledWidth = Math.ceil(width * scale);
   const scaledHeight = Math.ceil(height * scale);
