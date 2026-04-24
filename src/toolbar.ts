@@ -8,6 +8,7 @@ interface ToolbarOptions {
   onExportSvg: () => void;
   onExportPng: () => void;
   onCopyCode: () => void;
+  onCopyImage: () => void;
   onShare: () => void;
   onLoadExample: (example: DiagramExample) => void;
   onToggleTheme: () => void;
@@ -218,6 +219,12 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
     copyIcon(),
     options.onCopyCode,
   );
+  const copyImageBtn = createButton(
+    "Copy Image",
+    "Copy diagram image to clipboard",
+    clipboardImageIcon(),
+    options.onCopyImage,
+  );
   const shareBtn = createButton(
     "Share",
     "Copy a shareable link to clipboard",
@@ -228,6 +235,7 @@ export function createToolbar(options: ToolbarOptions): ToolbarResult {
   exportGroup.appendChild(exportSvgBtn);
   exportGroup.appendChild(exportPngBtn);
   exportGroup.appendChild(copyBtn);
+  exportGroup.appendChild(copyImageBtn);
   exportGroup.appendChild(shareBtn);
 
   middleSection.appendChild(fileGroup);
@@ -369,6 +377,15 @@ function examplesIcon(): string {
 function chevronDownIcon(): string {
   return `<svg class="toolbar-icon toolbar-icon-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="6 8 10 12 14 8"/>
+  </svg>`;
+}
+
+function clipboardImageIcon(): string {
+  return `<svg class="toolbar-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="3" width="10" height="14" rx="1.5"/>
+    <path d="M8 3V2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1"/>
+    <circle cx="10" cy="10" r="2"/>
+    <path d="M7 14l1.5-2 1.5 1 2-2.5L14 14H7z"/>
   </svg>`;
 }
 

@@ -4,7 +4,7 @@ import { saveDraft, loadDraft } from "./storage.ts";
 import { createEditor } from "./editor.ts";
 import { createPreview } from "./preview.ts";
 import { createToolbar } from "./toolbar.ts";
-import { exportSvg, exportPng, downloadBlob } from "./export.ts";
+import { exportSvg, renderPngBlob, downloadBlob } from "./export.ts";
 import {
   buildShareUrl,
   loadFromShareUrl,
@@ -235,6 +235,49 @@ async function main(): Promise<void> {
     saveDraft(DEFAULT_DIAGRAM);
   }
 
+  /**
+   * Produces a PNG Blob of the current diagram. Tries the live SVG first;
+   * if that fails (e.g. Chrome's foreignObject canvas-taint), re-renders
+   * with htmlLabels disabled and retries.
+   */
+  async function getPngBlob(): Promise<Blob> {
+    const svg = preview.getSvgElement();
+    if (!svg) {
+      throw new Error("No diagram to export");
+    }
+
+    const pngOptions = {
+      scale: 2,
+      backgroundColor: currentTheme === "dark" ? "#1a1a2e" : "#ffffff",
+    };
+
+    try {
+      return await renderPngBlob(svg, pngOptions);
+    } catch {
+      // Fallback: Chrome taints the canvas when the SVG contains
+      // <foreignObject> (used by Mermaid for HTML labels in flowcharts).
+      // Re-render with htmlLabels disabled so Mermaid emits pure SVG
+      // <text> elements instead, then retry.
+      const code = editor.getCode();
+      const exportId = `mermetic-export-${Date.now()}`;
+      const exportCode = `%%{init: {"flowchart": {"htmlLabels": false}}}%%\n${code}`;
+      const { svg: svgString } = await mermaid.render(exportId, exportCode);
+
+      const container = document.createElement("div");
+      container.innerHTML = svgString;
+      const fallbackSvg = container.querySelector("svg");
+
+      const leftover = document.getElementById("d" + exportId);
+      if (leftover) leftover.remove();
+
+      if (!fallbackSvg) {
+        throw new Error("Failed to produce fallback SVG for PNG export");
+      }
+
+      return renderPngBlob(fallbackSvg as unknown as SVGElement, pngOptions);
+    }
+  }
+
   function handleSave(): void {
     const blob = new Blob([editor.getCode()], {
       type: "text/plain;charset=utf-8",
@@ -258,21 +301,28 @@ async function main(): Promise<void> {
       }
     },
     onExportPng: () => {
-      const svg = preview.getSvgElement();
-      if (svg) {
-        void exportPng(svg, {
-          scale: 2,
-          backgroundColor: currentTheme === "dark" ? "#1a1a2e" : "#ffffff",
+      void getPngBlob()
+        .then((blob) => {
+          downloadBlob(blob, "diagram.png");
+          showToast("Exported PNG");
         })
-          .then(() => {
-            showToast("Exported PNG");
-          })
-          .catch(() => {
-            showToast("PNG export failed", "error");
-          });
-      } else {
-        showToast("No diagram to export", "error");
-      }
+        .catch(() => {
+          showToast("PNG export failed", "error");
+        });
+    },
+    onCopyImage: () => {
+      void getPngBlob()
+        .then((blob) => {
+          return navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+        })
+        .then(() => {
+          showToast("Copied image to clipboard");
+        })
+        .catch(() => {
+          showToast("Failed to copy image", "error");
+        });
     },
     onCopyCode: () => {
       void navigator.clipboard
