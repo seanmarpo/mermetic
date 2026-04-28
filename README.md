@@ -32,6 +32,10 @@ Mermetic makes a simple guarantee: **your data never leaves your browser**.
 
 The source code is open for anyone to audit and verify these claims.
 
+## Part of [LocalOnlyTools](https://localonly.tools)
+
+Mermetic is part of [LocalOnlyTools](https://localonly.tools), a collection of privacy-first, browser-based utilities that process everything locally on your device. No data ever leaves your browser — just like Mermetic. If you value privacy, check out the other tools in the collection.
+
 ## Quick Start
 
 Just visit the hosted URL and start editing. No sign-up, no downloads, no configuration.
