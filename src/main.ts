@@ -523,12 +523,14 @@ async function main(): Promise<void> {
 
   // --- Load initial code (share URL takes priority over saved draft) ---
   let initialCode = DEFAULT_DIAGRAM;
+  let isFromShareUrl = false;
   try {
     const sharedCode = await loadFromShareUrl();
     if (sharedCode) {
       initialCode = sharedCode;
       clearShareFragment();
       showToast("Loaded diagram from share link");
+      isFromShareUrl = true;
     } else {
       const savedDraft = loadDraft();
       if (savedDraft) {
@@ -546,6 +548,9 @@ async function main(): Promise<void> {
   editor.setCode(initialCode);
   saveDraft(initialCode);
   await renderDiagram(initialCode);
+  if (isFromShareUrl) {
+    preview.fitToView();
+  }
 
   // --- Keyboard shortcuts ---
   document.addEventListener("keydown", (e: KeyboardEvent) => {
