@@ -1,7 +1,7 @@
 {
   "name": "mermetic",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Mermetic — Hermetically sealed diagramming. A private, static Mermaid editor that runs entirely in your browser.",
   "license": "MIT",
